@@ -6,38 +6,7 @@ import dngsoftware.acerfid.databinding.AddDialogBinding;
 import dngsoftware.acerfid.databinding.ManualDialogBinding;
 import dngsoftware.acerfid.databinding.PickerDialogBinding;
 import dngsoftware.acerfid.databinding.TagDialogBinding;
-import static dngsoftware.acerfid.Utils.GetBrand;
-import static dngsoftware.acerfid.Utils.GetDefaultTemps;
-import static dngsoftware.acerfid.Utils.GetMaterialLength;
-import static dngsoftware.acerfid.Utils.GetMaterialWeight;
-import static dngsoftware.acerfid.Utils.GetSku;
-import static dngsoftware.acerfid.Utils.GetTemps;
-import static dngsoftware.acerfid.Utils.SetPermissions;
-import static dngsoftware.acerfid.Utils.arrayContains;
-import static dngsoftware.acerfid.Utils.bytesToHex;
-import static dngsoftware.acerfid.Utils.combineArrays;
-import static dngsoftware.acerfid.Utils.copyFile;
-import static dngsoftware.acerfid.Utils.copyFileToUri;
-import static dngsoftware.acerfid.Utils.copyUriToFile;
-import static dngsoftware.acerfid.Utils.filamentTypes;
-import static dngsoftware.acerfid.Utils.filamentVendors;
-import static dngsoftware.acerfid.Utils.getAllMaterials;
-import static dngsoftware.acerfid.Utils.getPageDefinition;
-import static dngsoftware.acerfid.Utils.hexToByte;
-import static dngsoftware.acerfid.Utils.materialWeights;
-import static dngsoftware.acerfid.Utils.numToBytes;
-import static dngsoftware.acerfid.Utils.GetSetting;
-import static dngsoftware.acerfid.Utils.SaveSetting;
-import static dngsoftware.acerfid.Utils.openUrl;
-import static dngsoftware.acerfid.Utils.parseColor;
-import static dngsoftware.acerfid.Utils.parseNumber;
-import static dngsoftware.acerfid.Utils.playBeep;
-import static dngsoftware.acerfid.Utils.populateDatabase;
-import static dngsoftware.acerfid.Utils.presetColors;
-import static dngsoftware.acerfid.Utils.setNfcLaunchMode;
-import static dngsoftware.acerfid.Utils.setTypeByItem;
-import static dngsoftware.acerfid.Utils.setVendorByItem;
-import static dngsoftware.acerfid.Utils.subArray;
+import static dngsoftware.acerfid.Utils.*;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
@@ -59,12 +28,12 @@ import android.nfc.tech.NfcA;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.Settings;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.text.SpannableString;
-import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.util.DisplayMetrics;
@@ -108,8 +77,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity implements NfcAdapter.ReaderCallback, NavigationView.OnNavigationItemSelectedListener {
     private MatDB matDb;
@@ -123,6 +90,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     AlertDialog inputDialog;
     tagAdapter recycleAdapter;
     RecyclerView recyclerView;
+    private Toast currentToast;
     tagItem[] tagItems;
     int SelectedSize;
     boolean userSelect = false;
@@ -130,6 +98,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     private ManualDialogBinding manual;
     Bitmap gradientBitmap;
     private ExecutorService executorService;
+    private Handler mainHandler;
     private ActivityResultLauncher<Intent> exportDirectoryChooser;
     private ActivityResultLauncher<Intent> importFileChooser;
     private ActivityResultLauncher<String> requestPermissionLauncher;
@@ -145,6 +114,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setThemeMode(GetSetting(this, "enabledm", false));
         Resources res = getApplicationContext().getResources();
         Locale locale = new Locale("en");
         Locale.setDefault(locale);
@@ -159,6 +129,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         SetPermissions(this);
 
         executorService = Executors.newSingleThreadExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
+
         setupActivityResultLaunchers();
 
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -180,6 +152,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             SaveSetting(this, "autoread", isChecked);
         });
 
+        MenuItem darkItem = navigationView.getMenu().findItem(R.id.nav_dark);
+        SwitchCompat darkSwitch = Objects.requireNonNull(darkItem.getActionView()).findViewById(R.id.drawer_switch);
+        darkSwitch.setChecked(GetSetting(this, "enabledm", false));
+        darkSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            SaveSetting(this, "enabledm", isChecked);
+            setThemeMode(isChecked);
+        });
 
 
         main.editbutton.setVisibility(View.INVISIBLE);
@@ -187,6 +166,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
         main.colorview.setOnClickListener(view -> openPicker());
         main.colorview.setBackgroundColor(Color.argb(255, 0, 0, 255));
+        main.txtcolor.setText(MaterialColor);
+        main.txtcolor.setTextColor(getContrastColor(Color.parseColor("#" + MaterialColor)));
         main.readbutton.setOnClickListener(view -> readTag(currentTag));
         main.writebutton.setOnClickListener(view -> writeTag(currentTag));
 
@@ -197,9 +178,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         main.deletebutton.setOnClickListener(view -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             SpannableString titleText = new SpannableString(getString(R.string.delete_filament));
-            titleText.setSpan(new ForegroundColorSpan(Color.parseColor("#1976D2")), 0, titleText.length(), 0);
+            titleText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.primary_brand)), 0, titleText.length(), 0);
             SpannableString messageText = new SpannableString(MaterialName);
-            messageText.setSpan(new ForegroundColorSpan(Color.BLACK), 0, messageText.length(), 0);
+            messageText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.text_main)), 0, messageText.length(), 0);
             builder.setTitle(titleText);
             builder.setMessage(messageText);
             builder.setPositiveButton(R.string.delete, (dialog, which) -> {
@@ -213,9 +194,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             AlertDialog alert = builder.create();
             alert.show();
             if (alert.getWindow() != null) {
-                alert.getWindow().setBackgroundDrawableResource(android.R.color.white);
-                alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#1976D2"));
-                alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#1976D2"));
+                alert.getWindow().setBackgroundDrawableResource(R.color.background_alt);
+                alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
+                alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
             }
         });
 
@@ -226,10 +207,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 Bundle options = new Bundle();
                 options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
                 nfcAdapter.enableReaderMode(this, this, NfcAdapter.FLAG_READER_NFC_A, options);
-            } else {
-                showToast(R.string.please_activate_nfc, Toast.LENGTH_LONG);
-                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
-                finish();
             }
         } catch (Exception ignored) {
         }
@@ -253,6 +230,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         ReadTagUID(getIntent());
     }
 
+
     void setMatDb() {
         try {
         if (rdb != null && rdb.isOpen()) {
@@ -266,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             populateDatabase(matDb);
         }
 
-        runOnUiThread(() -> {
+        mainHandler.post(() -> {
             sadapter = new ArrayAdapter<>(this, R.layout.spinner_item, materialWeights);
             main.spoolsize.setAdapter(sadapter);
             main.spoolsize.setSelection(SelectedSize);
@@ -286,6 +264,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
         } catch (Exception ignored) {}
     }
+
 
     @Override
     protected void onDestroy() {
@@ -307,6 +286,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -319,10 +299,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     @Override
     public void onTagDiscovered(Tag tag) {
         try {
-            runOnUiThread(() -> {
+            mainHandler.post(() -> {
                 byte[] uid = tag.getId();
                 if (uid.length >= 6) {
                     currentTag = tag;
@@ -354,6 +335,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     void loadMaterials(boolean select)
     {
         madapter = new ArrayAdapter<>(this, R.layout.spinner_item, getAllMaterials(matDb));
@@ -365,15 +347,14 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 assert MaterialName != null;
                 main.infotext.setText(String.format(Locale.getDefault(), getString(R.string.info_temps),
                         GetTemps(matDb, MaterialName)[0], GetTemps(matDb, MaterialName)[1], GetTemps(matDb, MaterialName)[2], GetTemps(matDb, MaterialName)[3]));
-
-                if (position <= 11){
+               String vendor = new String( Utils.GetBrand(matDb,MaterialName), StandardCharsets.UTF_8).trim();
+                if (vendor.equalsIgnoreCase("ac")){
                     main.editbutton.setVisibility(View.INVISIBLE);
                     main.deletebutton.setVisibility(View.INVISIBLE);
                 }else {
                     main.editbutton.setVisibility(View.VISIBLE);
                     main.deletebutton.setVisibility(View.VISIBLE);
                 }
-
             }
             @Override
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -383,9 +364,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             main.material.setSelection(madapter.getPosition(MaterialName));
         }
         else {
-            main.material.setSelection(3);
+            main.material.setSelection(6);
         }
     }
+
 
     void ReadTagUID(Intent intent) {
         if (intent != null) {
@@ -429,54 +411,62 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
             return;
         }
-        NfcA nfcA = NfcA.get(tag);
-        if (nfcA != null) {
-            try {
-                byte[] data = new byte[144];
-                ByteBuffer buff = ByteBuffer.wrap(data);
-                for (int page = 4; page <= 36; page += 4) {
-                    byte[] pageData = transceive(nfcA, new byte[] {(byte) 0x30, (byte)page});
-                    if (pageData != null) {
-                        buff.put(pageData);
+        executorService.execute(() -> {
+            NfcA nfcA = NfcA.get(tag);
+            if (nfcA != null) {
+                try {
+                    byte[] data = new byte[144];
+                    ByteBuffer buff = ByteBuffer.wrap(data);
+                    for (int page = 4; page <= 36; page += 4) {
+                        byte[] pageData = transceive(nfcA, new byte[]{(byte) 0x30, (byte) page});
+                        if (pageData != null) {
+                            buff.put(pageData);
+                        }
+                    }
+                    if (buff.array()[0] != (byte) 0x00) {
+                        mainHandler.post(() -> {
+                            userSelect = true;
+                            MaterialName = new String(subArray(buff.array(), 44, 16), StandardCharsets.UTF_8).trim();
+                            main.material.setSelection(madapter.getPosition(MaterialName));
+                            String color = parseColor(subArray(buff.array(), 65, 3));
+                            String alpha = bytesToHex(subArray(buff.array(), 64, 1), false);
+                            if (color.equals("010101")) {
+                                color = "000000";
+                            } // basic fix for anycubic setting black to transparent)
+                            MaterialColor = alpha + color;
+                            main.colorview.setBackgroundColor(Color.parseColor("#" + MaterialColor));
+                            main.txtcolor.setText(MaterialColor);
+                            main.txtcolor.setTextColor(getContrastColor(Color.parseColor("#" + MaterialColor)));
+                            // String sku = new String(subArray(buff.array(), 4, 16), StandardCharsets.UTF_8 ).trim();
+                            // String Brand = new String(subArray(buff.array(), 24, 16), StandardCharsets.UTF_8).trim();
+                            int extMin = parseNumber(subArray(buff.array(), 80, 2));
+                            int extMax = parseNumber(subArray(buff.array(), 82, 2));
+                            int bedMin = parseNumber(subArray(buff.array(), 100, 2));
+                            int bedMax = parseNumber(subArray(buff.array(), 102, 2));
+                            main.infotext.setText(String.format(Locale.getDefault(), getString(R.string.info_temps), extMin, extMax, bedMin, bedMax));
+                            // int diameter = parseNumber(subArray(buff.array(),104,2));
+                            MaterialWeight = GetMaterialWeight(parseNumber(subArray(buff.array(), 106, 2)));
+                            main.spoolsize.setSelection(sadapter.getPosition(MaterialWeight));
+                            showToast(R.string.data_read_from_tag, Toast.LENGTH_SHORT);
+                            userSelect = false;
+                        });
+                    } else {
+                        showToast(R.string.unknown_or_empty_tag, Toast.LENGTH_SHORT);
+                    }
+                } catch (Exception ignored) {
+                    showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
+                } finally {
+                    try {
+                        if (nfcA.isConnected()) nfcA.close();
+                    } catch (Exception ignored) {
                     }
                 }
-                if (buff.array()[0] != (byte) 0x00) {
-                    userSelect = true;
-                    MaterialName = new String(subArray(buff.array(), 44, 16), StandardCharsets.UTF_8).trim();
-                    main.material.setSelection(madapter.getPosition(MaterialName));
-                    String color = parseColor(subArray(buff.array(), 65, 3));
-                    String alpha = bytesToHex(subArray(buff.array(), 64, 1),false);
-                    if (color.equals("010101")) {color = "000000";} // basic fix for anycubic setting black to transparent)
-                    MaterialColor =  alpha + color;
-                    main.colorview.setBackgroundColor(Color.parseColor("#" + MaterialColor));
-
-                    // String sku = new String(subArray(buff.array(), 4, 16), StandardCharsets.UTF_8 ).trim();
-                    // String Brand = new String(subArray(buff.array(), 24, 16), StandardCharsets.UTF_8).trim();
-                    int extMin = parseNumber(subArray(buff.array(), 80, 2));
-                    int extMax = parseNumber(subArray(buff.array(), 82, 2));
-                    int bedMin = parseNumber(subArray(buff.array(), 100, 2));
-                    int bedMax = parseNumber(subArray(buff.array(), 102, 2));
-                    main.infotext.setText(String.format(Locale.getDefault(), getString(R.string.info_temps), extMin, extMax, bedMin, bedMax));
-                    // int diameter = parseNumber(subArray(buff.array(),104,2));
-                    MaterialWeight = GetMaterialWeight(parseNumber(subArray(buff.array(), 106, 2)));
-                    main.spoolsize.setSelection(sadapter.getPosition(MaterialWeight));
-                    showToast(R.string.data_read_from_tag, Toast.LENGTH_SHORT);
-                    userSelect = false;
-                } else {
-                    showToast(R.string.unknown_or_empty_tag, Toast.LENGTH_SHORT);
-                }
-            } catch (Exception ignored) {
-                showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
-            } finally {
-                try {
-                    if (nfcA.isConnected()) nfcA.close();
-                } catch (Exception ignored) {
-                }
+            } else {
+                showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
             }
-        } else {
-            showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
-        }
+        });
     }
+
 
     private void writeTagPage(NfcA nfcA, int page, byte[] data) throws Exception {
         byte[] cmd = new byte[6];
@@ -559,11 +549,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     }
 
     private void writeTag(Tag tag) {
-        new Thread(() -> {
-            if (tag == null) {
-                showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
-                return;
-            }
+        if (tag == null) {
+            showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
+            return;
+        }
+        executorService.execute(() -> {
             NfcA nfcA = NfcA.get(tag);
             if (nfcA != null) {
                 try {
@@ -607,14 +597,16 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                     showToast(R.string.error_writing_to_tag, Toast.LENGTH_SHORT);
                 } finally {
                     try {
-                       if (nfcA.isConnected()) nfcA.close();
-                    } catch (Exception ignored) {}
+                        if (nfcA.isConnected()) nfcA.close();
+                    } catch (Exception ignored) {
+                    }
                 }
             } else {
                 showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
             }
-        }).start();
+        });
     }
+
 
     private boolean checkTagAuth(NfcA nfcA) {
         try {
@@ -654,12 +646,14 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         } catch (Exception ignored) {return false;}
     }
 
+
     private int getTagType(NfcA nfcA) {
         if (probePage(nfcA, (byte) 220)) return 216;
         if (probePage(nfcA, (byte) 125)) return 215;
         if (probePage(nfcA, (byte) 47)) return 100;
         return 213;
     }
+
 
     private boolean probePage(NfcA nfcA, byte pageNumber) {
         try (nfcA) {
@@ -673,26 +667,31 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         return false;
     }
 
+
     private byte[] transceive(NfcA nfcA, byte[] data) throws Exception {
         if (!nfcA.isConnected()) nfcA.connect();
         return nfcA.transceive(data);
     }
 
+
     private void formatTag(Tag tag) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         SpannableString titleText = new SpannableString(getString(R.string.format_tag));
-        titleText.setSpan(new ForegroundColorSpan(Color.parseColor("#1976D2")), 0, titleText.length(), 0);
+        titleText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.primary_brand)), 0, titleText.length(), 0);
         SpannableString messageText = new SpannableString(getString(R.string.this_will_erase_the_data_on_the_tag_and_format_it_for_writing));
-        messageText.setSpan(new ForegroundColorSpan(Color.BLACK), 0, messageText.length(), 0);
+        messageText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.text_main)), 0, messageText.length(), 0);
         builder.setTitle(titleText);
         builder.setMessage(messageText);
         builder.setPositiveButton(R.string.format, (dialog, which) -> {
-            new Thread(() -> {
-                if (tag == null) {
-                    showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
-                    return;
-                }
-                try (NfcA nfcA = NfcA.get(tag)) {
+
+            if (tag == null) {
+                showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
+                return;
+            }
+
+            executorService.execute(() -> {
+                NfcA nfcA = NfcA.get(tag);
+                if (nfcA != null) {
                     try {
                         byte[] ccBytes;
                         if (tagType == 216) {
@@ -712,22 +711,31 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                             writeTagPage(nfcA, i, new byte[]{0x00, 0x00, 0x00, 0x00});
                         }
                         showToast(R.string.tag_formatted, Toast.LENGTH_SHORT);
+                        if (nfcA.isConnected()) nfcA.close();
                     } catch (Exception e) {
                         showToast(R.string.failed_to_format_tag_for_writing, Toast.LENGTH_SHORT);
+                    } finally {
+                        try {
+                            if (nfcA.isConnected()) nfcA.close();
+                        } catch (Exception ignored) {
+                        }
                     }
-                } catch (Exception ignored) {
+                } else {
+                    showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
                 }
-            }).start();
+            });
+
         });
         builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
         AlertDialog alert = builder.create();
         alert.show();
         if (alert.getWindow() != null) {
-            alert.getWindow().setBackgroundDrawableResource(android.R.color.white);
-            alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#1976D2"));
-            alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#1976D2"));
+            alert.getWindow().setBackgroundDrawableResource(R.color.background_alt);
+            alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
+            alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
         }
     }
+
 
     @SuppressLint("ClickableViewAccessibility")
     void openPicker() {
@@ -751,6 +759,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                         try {
                             int color = Color.argb(dl.alphaSlider.getProgress(), dl.redSlider.getProgress(), dl.greenSlider.getProgress(), dl.blueSlider.getProgress());
                             main.colorview.setBackgroundColor(color);
+                            main.txtcolor.setText(MaterialColor);
+                            main.txtcolor.setTextColor(getContrastColor(Color.parseColor("#" + MaterialColor)));
                         } catch (Exception ignored) {
                         }
                     }
@@ -868,14 +878,15 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         } catch (Exception ignored) {}
     }
 
+
     void openAddDialog(boolean edit) {
         try {
             if (!Utils.GetSetting(this,"CFN",false)) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 SpannableString titleText = new SpannableString(getString(R.string.notice));
-                titleText.setSpan(new ForegroundColorSpan(Color.parseColor("#1976D2")), 0, titleText.length(), 0);
+                titleText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.primary_brand)), 0, titleText.length(), 0);
                 SpannableString messageText = new SpannableString(getString(R.string.cf_notice));
-                messageText.setSpan(new ForegroundColorSpan(Color.BLACK), 0, messageText.length(), 0);
+                messageText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.text_main)), 0, messageText.length(), 0);
                 builder.setTitle(titleText);
                 builder.setMessage(messageText);
                 builder.setPositiveButton(R.string.accept, (dialog, which) -> {
@@ -887,9 +898,9 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 AlertDialog alert = builder.create();
                 alert.show();
                 if (alert.getWindow() != null) {
-                    alert.getWindow().setBackgroundDrawableResource(android.R.color.white);
-                    alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#1976D2"));
-                    alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#1976D2"));
+                    alert.getWindow().setBackgroundDrawableResource(R.color.background_alt);
+                    alert.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
+                    alert.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
                 }
                 return;
             }
@@ -907,11 +918,15 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             dl.chkvendor.setOnClickListener(v -> {
                 if (dl.chkvendor.isChecked()) {
                     dl.vendor.setVisibility(View.INVISIBLE);
-                    dl.txtvendor.setVisibility(View.VISIBLE);
+                    dl.layoutVendor.setVisibility(View.VISIBLE);
+                    dl.vendorborder.setVisibility(View.INVISIBLE);
+                    dl.lblvendor.setVisibility(View.INVISIBLE);
 
                 } else {
                     dl.vendor.setVisibility(View.VISIBLE);
-                    dl.txtvendor.setVisibility(View.INVISIBLE);
+                    dl.layoutVendor.setVisibility(View.INVISIBLE);
+                    dl.vendorborder.setVisibility(View.VISIBLE);
+                    dl.lblvendor.setVisibility(View.VISIBLE);
 
                 }
             });
@@ -926,11 +941,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
 
            dl.btnsave.setOnClickListener(v -> {
-               if (dl.txtserial.getText().toString().isEmpty() || dl.txtextmin.getText().toString().isEmpty() || dl.txtextmax.getText().toString().isEmpty() || dl.txtbedmin.getText().toString().isEmpty() || dl.txtbedmax.getText().toString().isEmpty()) {
+               if (Objects.requireNonNull(dl.txtserial.getText()).toString().isEmpty() || Objects.requireNonNull(dl.txtextmin.getText()).toString().isEmpty() || Objects.requireNonNull(dl.txtextmax.getText()).toString().isEmpty() || Objects.requireNonNull(dl.txtbedmin.getText()).toString().isEmpty() || Objects.requireNonNull(dl.txtbedmax.getText()).toString().isEmpty()) {
                    showToast(R.string.fill_all_fields, Toast.LENGTH_SHORT);
                    return;
                }
-               if (dl.chkvendor.isChecked() && dl.txtvendor.getText().toString().isEmpty()) {
+               if (dl.chkvendor.isChecked() && Objects.requireNonNull(dl.txtvendor.getText()).toString().isEmpty()) {
                    showToast(R.string.fill_all_fields, Toast.LENGTH_SHORT);
                    return;
                }
@@ -938,7 +953,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                String vendor = dl.vendor.getSelectedItem().toString();
                if (dl.chkvendor.isChecked())
                {
-                   vendor = dl.txtvendor.getText().toString().trim();
+                   vendor = Objects.requireNonNull(dl.txtvendor.getText()).toString().trim();
                }
                if (edit) {
                    updateFilament(vendor, dl.type.getSelectedItem().toString(), dl.txtserial.getText().toString(), dl.txtextmin.getText().toString(), dl.txtextmax.getText().toString(), dl.txtbedmin.getText().toString(), dl.txtbedmax.getText().toString());
@@ -985,18 +1000,24 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 try {
                     if (!arrayContains(filamentVendors, MaterialName.split(dl.type.getSelectedItem().toString() + " ")[0].trim())) {
                         dl.chkvendor.setChecked(true);
-                        dl.txtvendor.setVisibility(View.VISIBLE);
+                        dl.layoutVendor.setVisibility(View.VISIBLE);
+                        dl.vendorborder.setVisibility(View.INVISIBLE);
+                        dl.lblvendor.setVisibility(View.INVISIBLE);
                         dl.vendor.setVisibility(View.INVISIBLE);
                         dl.txtvendor.setText(MaterialName.split(dl.type.getSelectedItem().toString() + " ")[0].trim());
                     } else {
                         dl.chkvendor.setChecked(false);
-                        dl.txtvendor.setVisibility(View.INVISIBLE);
+                        dl.layoutVendor.setVisibility(View.INVISIBLE);
+                        dl.vendorborder.setVisibility(View.VISIBLE);
+                        dl.lblvendor.setVisibility(View.VISIBLE);
                         dl.vendor.setVisibility(View.VISIBLE);
                         setVendorByItem(dl.vendor, vadapter, MaterialName);
                     }
                 } catch (Exception ignored) {
                     dl.chkvendor.setChecked(false);
-                    dl.txtvendor.setVisibility(View.INVISIBLE);
+                    dl.layoutVendor.setVisibility(View.INVISIBLE);
+                    dl.vendorborder.setVisibility(View.VISIBLE);
+                    dl.lblvendor.setVisibility(View.VISIBLE);
                     dl.vendor.setVisibility(View.VISIBLE);
                     dl.vendor.setSelection(0);
                 }
@@ -1025,53 +1046,47 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         } catch (Exception ignored) {}
     }
 
+
     void addFilament(String tmpVendor, String tmpType, String tmpSerial, String tmpExtMin, String tmpExtMax, String tmpBedMin, String tmpBedMax) {
-        Filament filament = new Filament();
-        filament.position =  matDb.getItemCount();
-        filament.filamentID = "";
-        filament.filamentName = String.format("%s %s %s", tmpVendor.trim(), tmpType, tmpSerial.trim());
-        filament.filamentVendor = "";
-        filament.filamentParam = String.format("%s|%s|%s|%s", tmpExtMin, tmpExtMax, tmpBedMin, tmpBedMax);
-        matDb.addItem(filament);
-        loadMaterials(false);
+        try {
+            Filament filament = new Filament();
+            filament.position = matDb.getItemCount();
+            filament.filamentID = "";
+            filament.filamentName = String.format("%s %s %s", tmpVendor.trim(), tmpType, tmpSerial.trim());
+            filament.filamentVendor = "";
+            filament.filamentParam = String.format("%s|%s|%s|%s", tmpExtMin, tmpExtMax, tmpBedMin, tmpBedMax);
+            matDb.addItem(filament);
+            loadMaterials(false);
+        } catch (Exception ignored) {}
     }
 
+
     void updateFilament(String tmpVendor, String tmpType, String tmpSerial, String tmpExtMin, String tmpExtMax, String tmpBedMin, String tmpBedMax) {
-        Filament currentFilament = matDb.getFilamentByName(MaterialName);
-        int tmpPosition = currentFilament.position;
-        matDb.deleteItem(currentFilament);
-        MaterialName = String.format("%s %s %s", tmpVendor.trim() , tmpType, tmpSerial.trim());
-        Filament filament = new Filament();
-        filament.position =  tmpPosition;
-        filament.filamentID = "";
-        filament.filamentName = MaterialName;
-        filament.filamentVendor = "";
-        filament.filamentParam = String.format("%s|%s|%s|%s", tmpExtMin, tmpExtMax, tmpBedMin, tmpBedMax);
-        matDb.addItem(filament);
-        loadMaterials(true);
+        try {
+            Filament currentFilament = matDb.getFilamentByName(MaterialName);
+            int tmpPosition = currentFilament.position;
+            matDb.deleteItem(currentFilament);
+            MaterialName = String.format("%s %s %s", tmpVendor.trim(), tmpType, tmpSerial.trim());
+            Filament filament = new Filament();
+            filament.position = tmpPosition;
+            filament.filamentID = "";
+            filament.filamentName = MaterialName;
+            filament.filamentVendor = "";
+            filament.filamentParam = String.format("%s|%s|%s|%s", tmpExtMin, tmpExtMax, tmpBedMin, tmpBedMax);
+            matDb.addItem(filament);
+            loadMaterials(true);
+        } catch (Exception ignored) {}
     }
+
 
     private void updateColorDisplay(PickerDialogBinding dl, int currentAlpha,int currentRed,int currentGreen,int currentBlue) {
         int color = Color.argb(currentAlpha, currentRed, currentGreen, currentBlue);
         dl.colorDisplay.setBackgroundColor(color);
         String hexCode = rgbToHexA(currentRed, currentGreen, currentBlue, currentAlpha);
         dl.txtcolor.setText(hexCode);
-        double alphaNormalized = currentAlpha / 255.0;
-        int blendedRed = (int) (currentRed * alphaNormalized + 244 * (1 - alphaNormalized));
-        int blendedGreen = (int) (currentGreen * alphaNormalized + 244 * (1 - alphaNormalized));
-        int blendedBlue = (int) (currentBlue * alphaNormalized + 244 * (1 - alphaNormalized));
-        double brightness = (0.299 * blendedRed + 0.587 * blendedGreen + 0.114 * blendedBlue) / 255;
-        if (brightness > 0.5) {
-            dl.txtcolor.setTextColor(Color.BLACK);
-        } else {
-            dl.txtcolor.setTextColor(Color.WHITE);
-        }
-
+        dl.txtcolor.setTextColor(getContrastColor(Color.parseColor("#" + hexCode)));
     }
 
-    private String rgbToHexA(int r, int g, int b, int a) {
-        return String.format("%02X%02X%02X%02X", a, r, g, b);
-    }
 
     private void setupPresetColors(PickerDialogBinding dl) {
         dl.presetColorGrid.removeAllViews();
@@ -1101,6 +1116,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     private void setSlidersFromColor(PickerDialogBinding dl, int argbColor) {
         dl.redSlider.setProgress(Color.red(argbColor));
         dl.greenSlider.setProgress(Color.green(argbColor));
@@ -1108,6 +1124,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         dl.alphaSlider.setProgress(Color.alpha(argbColor));
         updateColorDisplay(dl, Color.alpha(argbColor), Color.red(argbColor), Color.green(argbColor), Color.blue(argbColor));
     }
+
 
     private void showHexInputDialog(PickerDialogBinding dl) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.AlertDialogTheme);
@@ -1120,7 +1137,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         input.setTextAlignment(TEXT_ALIGNMENT_CENTER);
         input.setText(rgbToHexA(dl.redSlider.getProgress(), dl.greenSlider.getProgress(), dl.blueSlider.getProgress(), dl.alphaSlider.getProgress()));
         InputFilter[] filters = new InputFilter[3];
-        filters[0] = new HexInputFilter();
+        filters[0] = new Utils.HexInputFilter();
         filters[1] = new InputFilter.LengthFilter(8);
         filters[2] = new InputFilter.AllCaps();
         input.setFilters(filters);
@@ -1157,26 +1174,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         inputDialog.show();
     }
 
-    private static class HexInputFilter implements InputFilter {
-        @Override
-        public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
-            StringBuilder filtered = new StringBuilder();
-            for (int i = start; i < end; i++) {
-                char character = source.charAt(i);
-                if (Character.isDigit(character) || (character >= 'a' && character <= 'f') || (character >= 'A' && character <= 'F')) {
-                    filtered.append(character);
-                }
-            }
-            return filtered.toString();
-        }
-    }
-
-    private boolean isValidHexCode(String hexCode) {
-        Pattern pattern = Pattern.compile("^[0-9a-fA-F]{8}$");
-        Matcher matcher = pattern.matcher(hexCode);
-        return matcher.matches();
-    }
-
 
     void setupGradientPicker(PickerDialogBinding dl) {
         dl.gradientPickerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -1204,6 +1201,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
     }
+
 
     private void setupCollapsibleSection(PickerDialogBinding dl, LinearLayout header, final ViewGroup content, final ImageView toggleIcon, boolean isExpandedInitially) {
         content.setVisibility(isExpandedInitially ? View.VISIBLE : View.GONE);
@@ -1246,72 +1244,92 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
     }
 
+
     private void setupActivityResultLaunchers() {
-        exportDirectoryChooser = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        Uri treeUri = result.getData().getData();
-                        if (treeUri != null) {
-                            getContentResolver().takePersistableUriPermission(
-                                    treeUri,
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            );
-                            performSAFExport(treeUri);
-                        } else {
-                            showToast(R.string.failed_to_get_export_directory, Toast.LENGTH_SHORT);
+        try {
+            exportDirectoryChooser = registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        try {
+                            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                                Uri treeUri = result.getData().getData();
+                                if (treeUri != null) {
+                                    getContentResolver().takePersistableUriPermission(
+                                            treeUri,
+                                            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                    );
+                                    performSAFExport(treeUri);
+                                } else {
+                                    showToast(R.string.failed_to_get_export_directory, Toast.LENGTH_SHORT);
+                                }
+                            } else {
+                                showToast(R.string.export_cancelled, Toast.LENGTH_SHORT);
+                            }
+                        } catch (Exception ignored) {
                         }
-                    } else {
-                        showToast(R.string.export_cancelled, Toast.LENGTH_SHORT);
                     }
-                }
-        );
+            );
 
-        importFileChooser = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        Uri fileUri = result.getData().getData();
-                        if (fileUri != null) {
-                            performSAFImport(fileUri);
-                        } else {
-                            showToast(R.string.failed_to_select_import_file, Toast.LENGTH_SHORT);
+            importFileChooser = registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        try {
+                            if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                                Uri fileUri = result.getData().getData();
+                                if (fileUri != null) {
+                                    performSAFImport(fileUri);
+                                } else {
+                                    showToast(R.string.failed_to_select_import_file, Toast.LENGTH_SHORT);
+                                }
+                            } else {
+                                showToast(R.string.import_cancelled, Toast.LENGTH_SHORT);
+                            }
+
+                        } catch (Exception ignored) {
                         }
-                    } else {
-                        showToast(R.string.import_cancelled, Toast.LENGTH_SHORT);
                     }
-                }
-        );
+            );
 
-        requestPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                isGranted -> {
-                    if (isGranted) {
-                        if (pendingAction == ACTION_EXPORT) {
-                            performLegacyExport();
-                        } else if (pendingAction == ACTION_IMPORT) {
-                            performLegacyImport();
+            requestPermissionLauncher = registerForActivityResult(
+                    new ActivityResultContracts.RequestPermission(),
+                    isGranted -> {
+                        try {
+
+                            if (isGranted) {
+                                if (pendingAction == ACTION_EXPORT) {
+                                    performLegacyExport();
+                                } else if (pendingAction == ACTION_IMPORT) {
+                                    performLegacyImport();
+                                }
+                            } else {
+                                showToast(R.string.storage_permission_denied_cannot_perform_action, Toast.LENGTH_LONG);
+                            }
+                            pendingAction = -1;
+
+                        } catch (Exception ignored) {
                         }
-                    } else {
-                        showToast(R.string.storage_permission_denied_cannot_perform_action, Toast.LENGTH_LONG);
                     }
-                    pendingAction = -1;
-                }
-        );
+            );
 
-        cameraLauncher = registerForActivityResult(
-                new ActivityResultContracts.TakePicturePreview(),
-                bitmap -> {
-                    if (bitmap != null) {
-                        colorDialog.photoImage.setImageBitmap(bitmap);
-                        setupPhotoPicker(colorDialog.photoImage);
-                    } else {
-                        // Handle failure or cancellation
-                        showToast(R.string.photo_capture_cancelled_or_failed, Toast.LENGTH_SHORT);
+            cameraLauncher = registerForActivityResult(
+                    new ActivityResultContracts.TakePicturePreview(),
+                    bitmap -> {
+                        try {
+                            if (bitmap != null) {
+                                colorDialog.photoImage.setImageBitmap(bitmap);
+                                setupPhotoPicker(colorDialog.photoImage);
+                            } else {
+                                // Handle failure or cancellation
+                                showToast(R.string.photo_capture_cancelled_or_failed, Toast.LENGTH_SHORT);
+                            }
+                        } catch (Exception ignored) {
+                        }
                     }
-                }
-        );
+            );
+        } catch (Exception ignored) {
+        }
     }
+
 
     private void checkPermissionAndStartAction(int actionType) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -1334,11 +1352,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     private void startSAFExportProcess() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.putExtra(Intent.EXTRA_TITLE, getString(R.string.select_backup_folder));
         exportDirectoryChooser.launch(intent);
     }
+
 
     private void performSAFExport(Uri treeUri) {
         executorService.execute(() -> {
@@ -1367,6 +1387,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
     }
 
+
     private void performLegacyExport() {
         executorService.execute(() -> {
             try {
@@ -1388,6 +1409,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
     }
 
+
     private void startSAFImportProcess() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -1396,6 +1418,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
         importFileChooser.launch(intent);
     }
+
 
     private void performSAFImport(Uri sourceUri) {
         if (!sourceUri.toString().toLowerCase().contains("filament_database")) {
@@ -1425,6 +1448,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
     }
+
 
     private void performLegacyImport() {
         executorService.execute(() -> {
@@ -1464,12 +1488,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
     }
 
+
     private void showImportDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         SpannableString titleText = new SpannableString("Import Database");
-        titleText.setSpan(new ForegroundColorSpan(Color.parseColor("#1976D2")), 0, titleText.length(), 0);
+        titleText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.primary_brand)), 0, titleText.length(), 0);
         SpannableString messageText = new SpannableString("Restore database from file\n\nfilament_database.db");
-        messageText.setSpan(new ForegroundColorSpan(Color.BLACK), 0, messageText.length(), 0);
+        messageText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.text_main)), 0, messageText.length(), 0);
         builder.setTitle(titleText);
         builder.setMessage(messageText);
         builder.setPositiveButton(R.string.import_txt, (dialog, which) -> checkPermissionAndStartAction(ACTION_IMPORT));
@@ -1477,36 +1502,38 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         AlertDialog dialog = builder.create();
         dialog.show();
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.white);
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#1976D2"));
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#1976D2"));
+            dialog.getWindow().setBackgroundDrawableResource(R.color.background_alt);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
         }
     }
+
 
     private void showExportDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         SpannableString titleText = new SpannableString("Export Database");
-        titleText.setSpan(new ForegroundColorSpan(Color.parseColor("#1976D2")), 0, titleText.length(), 0);
+        titleText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.primary_brand)), 0, titleText.length(), 0);
         SpannableString messageText = new SpannableString("Backup database to file\n\nfilament_database.db");
-        messageText.setSpan(new ForegroundColorSpan(Color.BLACK), 0, messageText.length(), 0);
+        messageText.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.text_main)), 0, messageText.length(), 0);
         builder.setTitle(titleText);
         builder.setMessage(messageText);
         builder.setPositiveButton(R.string.export, (dialog, which) -> new Thread(() -> {
             if (matDb.getItemCount() > 0) {
-                runOnUiThread(() -> checkPermissionAndStartAction(ACTION_EXPORT));
+                mainHandler.post(() -> checkPermissionAndStartAction(ACTION_EXPORT));
             } else {
-                runOnUiThread(() -> showToast(R.string.no_data_to_export, Toast.LENGTH_SHORT));
+                mainHandler.post(() -> showToast(R.string.no_data_to_export, Toast.LENGTH_SHORT));
             }
         }).start());
         builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
         dialog.show();
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.white);
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#1976D2"));
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#1976D2"));
+            dialog.getWindow().setBackgroundDrawableResource(R.color.background_alt);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(this, R.color.primary_brand));
         }
     }
+
 
     private void checkPermissionsAndCapture() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -1516,6 +1543,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             takePicture();
         }
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -1529,11 +1557,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
     }
 
+
     private void takePicture() {
         if (cameraLauncher != null) {
             cameraLauncher.launch(null);
         }
     }
+
 
     @SuppressLint("ClickableViewAccessibility")
     private void setupPhotoPicker(ImageView imageView) {
@@ -1561,6 +1591,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         });
     }
 
+
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
@@ -1578,6 +1609,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }
+
 
     @SuppressLint("SetTextI18n")
     void openCustom() {
@@ -1769,126 +1801,155 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             });
 
             manual.btncls.setOnClickListener(v -> customDialog.dismiss());
-            manual.btncol.setOnClickListener(view -> openPicker());
+            manual.layoutColor.setEndIconOnClickListener(view -> openPicker());
 
             manual.btnread.setOnClickListener(v -> {
+
                 if (currentTag == null) {
                     showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
                     return;
                 }
-                NfcA nfcA = NfcA.get(currentTag);
-                if (nfcA != null) {
-                    try {
-                        byte[] data = new byte[144];
-                        ByteBuffer buff = ByteBuffer.wrap(data);
-                        for (int page = 4; page <= 36; page += 4) {
-                            byte[] pageData = transceive(nfcA, new byte[] {(byte) 0x30, (byte)page});
-                            if (pageData != null) {
-                                buff.put(pageData);
-                            }
-                        }
-                        if (buff.array()[0] != (byte) 0x00) {
-                            manual.txttype.setText(new String(subArray(buff.array(), 44, 16), StandardCharsets.UTF_8).trim());
-                            manual.txtsku.setText(new String(subArray(buff.array(), 4, 16), StandardCharsets.UTF_8 ).trim());
-                            manual.txtbrand.setText(new String(subArray(buff.array(), 24, 16), StandardCharsets.UTF_8).trim());
-                            String color = parseColor(subArray(buff.array(), 65, 3));
-                            String alpha = bytesToHex(subArray(buff.array(), 64, 1),false);
-                            if (color.equals("010101")) {color = "000000";}
-                            manual.txtcolor.setText(alpha.toUpperCase() + color.toUpperCase());
-                            manual.txtextmin.setText(String.valueOf(parseNumber(subArray(buff.array(), 80, 2))));
-                            manual.txtextmax.setText(String.valueOf(parseNumber(subArray(buff.array(), 82, 2))));
-                            manual.txtbedmin.setText(String.valueOf(parseNumber(subArray(buff.array(), 100, 2))));
-                            manual.txtbedmax.setText(String.valueOf(parseNumber(subArray(buff.array(), 102, 2))));
-                            manual.txtdiam.setText(String.format(Locale.getDefault(), "%.2f",parseNumber(subArray(buff.array(),104,2)) / 100.0));
-                            manual.txtlength.setText(String.valueOf(parseNumber(Utils.subArray(buff.array(), 106, 2))));
-                            showToast(R.string.data_read_from_tag, Toast.LENGTH_SHORT);
-                        } else {
-                            showToast(R.string.unknown_or_empty_tag, Toast.LENGTH_SHORT);
-                        }
-                    } catch (Exception ignored) {
-                        showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
-                    } finally {
-                        try {
-                            nfcA.close();
-                        } catch (Exception ignored) {
-                        }
-                    }
-                } else {
-                    showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
-                }
-            });
 
-            manual.btnwrite.setOnClickListener(v -> {
-                if (manual.txtcolor.getText().length() == 8 && manual.txttype.getText().length() > 0
-                        && manual.txtextmin.getText().length() > 0 && manual.txtextmax.getText().length() > 0
-                        && manual.txtbedmin.getText().length() > 0 && manual.txtbedmax.getText().length() > 0
-                        && manual.txtdiam.getText().length() > 0 && manual.txtlength.getText().length() > 0) {
-
-                    if (currentTag == null) {
-                        showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
-                        return;
-                    }
+                executorService.execute(() -> {
                     NfcA nfcA = NfcA.get(currentTag);
                     if (nfcA != null) {
                         try {
-                            checkTagAuth(nfcA);
-                            writeTagPage(nfcA, 4, new byte[]{123, 0, 101, 0});
-                            byte[] skuData = new byte[20];
-                            Arrays.fill(skuData, (byte) 0);
-                            System.arraycopy(manual.txtsku.getText().toString().trim().getBytes(), 0, skuData, 0, Math.min(20, manual.txtsku.getText().toString().length()));
-                            writeTagPage(nfcA, 5, subArray(skuData, 0, 4));
-                            writeTagPage(nfcA, 6, subArray(skuData, 4, 4));
-                            writeTagPage(nfcA, 7, subArray(skuData, 8, 4));
-                            writeTagPage(nfcA, 8, subArray(skuData, 12, 4));
-                            byte[] bndData = new byte[20];
-                            Arrays.fill(bndData, (byte) 0);
-                            System.arraycopy(manual.txtbrand.getText().toString().trim().getBytes(), 0, bndData, 0, Math.min(20, manual.txtbrand.getText().toString().length()));
-                            writeTagPage(nfcA, 10, subArray(bndData, 0, 4));
-                            writeTagPage(nfcA, 11, subArray(bndData, 4, 4));
-                            writeTagPage(nfcA, 12, subArray(bndData, 8, 4));
-                            writeTagPage(nfcA, 13, subArray(bndData, 12, 4));
-                            byte[] matData = new byte[20];
-                            Arrays.fill(matData, (byte) 0);
-                            System.arraycopy(manual.txttype.getText().toString().trim().getBytes(), 0, matData, 0, Math.min(20, manual.txttype.getText().toString().length()));
-                            writeTagPage(nfcA, 15, subArray(matData, 0, 4));
-                            writeTagPage(nfcA, 16, subArray(matData, 4, 4));
-                            writeTagPage(nfcA, 17, subArray(matData, 8, 4));
-                            writeTagPage(nfcA, 18, subArray(matData, 12, 4));
-                            String color = manual.txtcolor.getText().toString().trim().substring(2);
-                            String alpha = manual.txtcolor.getText().toString().trim().substring(0, 2);
-                            if (color.equals("000000")) {color = "010101";}
-                            writeTagPage(nfcA, 20, combineArrays(hexToByte(alpha), parseColor(color)));
-                            byte[] extTemp = new byte[4];
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtextmin.getText().toString().trim())), 0, extTemp, 0, 2);
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtextmax.getText().toString().trim())), 0, extTemp, 2, 2);
-                            writeTagPage(nfcA, 24, extTemp);
-                            byte[] bedTemp = new byte[4];
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtbedmin.getText().toString().trim())), 0, bedTemp, 0, 2);
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtbedmax.getText().toString().trim())), 0, bedTemp, 2, 2);
-                            writeTagPage(nfcA, 29, bedTemp);
-                            byte[] filData = new byte[4];
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtdiam.getText().toString().trim().replace(".", ""))), 0, filData, 0, 2);
-                            System.arraycopy(numToBytes(Integer.parseInt(manual.txtlength.getText().toString().trim())), 0, filData, 2, 2);
-                            writeTagPage(nfcA, 30, filData);
-                            writeTagPage(nfcA, 31, new byte[]{(byte) 232, 3, 0, 0});
-                            playBeep();
-                            showToast(R.string.data_written_to_tag, Toast.LENGTH_SHORT);
-                        } catch (Exception e) {
-                            showToast(R.string.error_writing_to_tag, Toast.LENGTH_SHORT);
+                            byte[] data = new byte[144];
+                            ByteBuffer buff = ByteBuffer.wrap(data);
+                            for (int page = 4; page <= 36; page += 4) {
+                                byte[] pageData = transceive(nfcA, new byte[]{(byte) 0x30, (byte) page});
+                                if (pageData != null) {
+                                    buff.put(pageData);
+                                }
+                            }
+                            if (buff.array()[0] != (byte) 0x00) {
+
+                                mainHandler.post(() -> {
+                                            manual.txttype.setText(new String(subArray(buff.array(), 44, 16), StandardCharsets.UTF_8).trim());
+                                            manual.txtsku.setText(new String(subArray(buff.array(), 4, 16), StandardCharsets.UTF_8).trim());
+                                            manual.txtbrand.setText(new String(subArray(buff.array(), 24, 16), StandardCharsets.UTF_8).trim());
+                                            String color = parseColor(subArray(buff.array(), 65, 3));
+                                            String alpha = bytesToHex(subArray(buff.array(), 64, 1), false);
+                                            if (color.equals("010101")) {
+                                                color = "000000";
+                                            }
+                                            manual.txtcolor.setText(alpha.toUpperCase() + color.toUpperCase());
+                                            manual.txtextmin.setText(String.valueOf(parseNumber(subArray(buff.array(), 80, 2))));
+                                            manual.txtextmax.setText(String.valueOf(parseNumber(subArray(buff.array(), 82, 2))));
+                                            manual.txtbedmin.setText(String.valueOf(parseNumber(subArray(buff.array(), 100, 2))));
+                                            manual.txtbedmax.setText(String.valueOf(parseNumber(subArray(buff.array(), 102, 2))));
+                                            manual.txtdiam.setText(String.format(Locale.getDefault(), "%.2f", parseNumber(subArray(buff.array(), 104, 2)) / 100.0));
+                                            manual.txtlength.setText(String.valueOf(parseNumber(Utils.subArray(buff.array(), 106, 2))));
+                                        });
+
+                                showToast(R.string.data_read_from_tag, Toast.LENGTH_SHORT);
+                            } else {
+                                showToast(R.string.unknown_or_empty_tag, Toast.LENGTH_SHORT);
+                            }
+                        } catch (Exception ignored) {
+                            showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
                         } finally {
                             try {
-                                nfcA.close();
+                                if (nfcA.isConnected()) nfcA.close();
                             } catch (Exception ignored) {
                             }
                         }
                     } else {
                         showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
                     }
+
+                });
+
+            });
+
+            manual.btnwrite.setOnClickListener(v -> {
+                if (Objects.requireNonNull(manual.txtcolor.getText()).length() == 8 && Objects.requireNonNull(manual.txttype.getText()).length() > 0
+                        && Objects.requireNonNull(manual.txtextmin.getText()).length() > 0 && Objects.requireNonNull(manual.txtextmax.getText()).length() > 0
+                        && Objects.requireNonNull(manual.txtbedmin.getText()).length() > 0 && Objects.requireNonNull(manual.txtbedmax.getText()).length() > 0
+                        && Objects.requireNonNull(manual.txtdiam.getText()).length() > 0 && Objects.requireNonNull(manual.txtlength.getText()).length() > 0) {
+
+                    if (currentTag == null) {
+                        showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
+                        return;
+                    }
+
+                    final String sku = Objects.requireNonNull(manual.txtsku.getText()).toString().trim();
+                    final String brand = Objects.requireNonNull(manual.txtbrand.getText()).toString().trim();
+                    final String type = manual.txttype.getText().toString().trim();
+                    final String colorRaw = manual.txtcolor.getText().toString().trim();
+                    final String extMin = manual.txtextmin.getText().toString().trim();
+                    final String extMax = manual.txtextmax.getText().toString().trim();
+                    final String bedMin = manual.txtbedmin.getText().toString().trim();
+                    final String bedMax = manual.txtbedmax.getText().toString().trim();
+                    final String diam = manual.txtdiam.getText().toString().trim().replace(".", "");
+                    final String length = manual.txtlength.getText().toString().trim();
+
+                    executorService.execute(() -> {
+                        NfcA nfcA = NfcA.get(currentTag);
+                        if (nfcA != null) {
+                            try {
+                                nfcA.connect();
+                                checkTagAuth(nfcA);
+                                writeTagPage(nfcA, 4, new byte[]{123, 0, 101, 0});
+                                byte[] skuData = new byte[20];
+                                Arrays.fill(skuData, (byte) 0);
+                                byte[] skuBytes = sku.getBytes();
+                                System.arraycopy(skuBytes, 0, skuData, 0, Math.min(20, skuBytes.length));
+                                writeTagPage(nfcA, 5, subArray(skuData, 0, 4));
+                                writeTagPage(nfcA, 6, subArray(skuData, 4, 4));
+                                writeTagPage(nfcA, 7, subArray(skuData, 8, 4));
+                                writeTagPage(nfcA, 8, subArray(skuData, 12, 4));
+                                byte[] bndData = new byte[20];
+                                Arrays.fill(bndData, (byte) 0);
+                                byte[] bndBytes = brand.getBytes();
+                                System.arraycopy(bndBytes, 0, bndData, 0, Math.min(20, bndBytes.length));
+                                writeTagPage(nfcA, 10, subArray(bndData, 0, 4));
+                                writeTagPage(nfcA, 11, subArray(bndData, 4, 4));
+                                writeTagPage(nfcA, 12, subArray(bndData, 8, 4));
+                                writeTagPage(nfcA, 13, subArray(bndData, 12, 4));
+                                byte[] matData = new byte[20];
+                                Arrays.fill(matData, (byte) 0);
+                                byte[] matBytes = type.getBytes();
+                                System.arraycopy(matBytes, 0, matData, 0, Math.min(20, matBytes.length));
+                                writeTagPage(nfcA, 15, subArray(matData, 0, 4));
+                                writeTagPage(nfcA, 16, subArray(matData, 4, 4));
+                                writeTagPage(nfcA, 17, subArray(matData, 8, 4));
+                                writeTagPage(nfcA, 18, subArray(matData, 12, 4));
+                                String color = colorRaw.substring(2);
+                                String alpha = colorRaw.substring(0, 2);
+                                if (color.equals("000000")) color = "010101";
+                                writeTagPage(nfcA, 20, combineArrays(hexToByte(alpha), parseColor(color)));
+                                byte[] extTemp = new byte[4];
+                                System.arraycopy(numToBytes(Integer.parseInt(extMin)), 0, extTemp, 0, 2);
+                                System.arraycopy(numToBytes(Integer.parseInt(extMax)), 0, extTemp, 2, 2);
+                                writeTagPage(nfcA, 24, extTemp);
+                                byte[] bedTemp = new byte[4];
+                                System.arraycopy(numToBytes(Integer.parseInt(bedMin)), 0, bedTemp, 0, 2);
+                                System.arraycopy(numToBytes(Integer.parseInt(bedMax)), 0, bedTemp, 2, 2);
+                                writeTagPage(nfcA, 29, bedTemp);
+                                byte[] filData = new byte[4];
+                                System.arraycopy(numToBytes(Integer.parseInt(diam)), 0, filData, 0, 2);
+                                System.arraycopy(numToBytes(Integer.parseInt(length)), 0, filData, 2, 2);
+                                writeTagPage(nfcA, 30, filData);
+                                writeTagPage(nfcA, 31, new byte[]{(byte) 232, 3, 0, 0});
+                                playBeep();
+                                showToast(R.string.data_written_to_tag, Toast.LENGTH_SHORT);
+
+                            } catch (Exception e) {
+                                showToast(R.string.error_writing_to_tag, Toast.LENGTH_SHORT);
+                            } finally {
+                                try {
+                                    if (nfcA.isConnected()) nfcA.close();
+                                } catch (Exception ignored) {}
+                            }
+                        } else {
+                            showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
+                        }
+                    });
                 }
                 else {
                     showToast(R.string.invalid_input, Toast.LENGTH_SHORT);
                 }
-
             });
             manual.btnfmt.setOnClickListener(v -> formatTag(currentTag));
 
@@ -1911,17 +1972,20 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     }
 
 
-    private void showToast(final int message, final int duration) {
-        runOnUiThread(() -> {
-            Toast.makeText(getApplicationContext(), message, duration).show();
+    private void showToast(final Object content, final int duration) {
+        mainHandler.post(() -> {
+            if (currentToast != null) currentToast.cancel();
+            if (content instanceof Integer) {
+                currentToast = Toast.makeText(this, (Integer) content, duration);
+            } else if (content instanceof String) {
+                currentToast = Toast.makeText(this, (String) content, duration);
+            } else {
+                currentToast = Toast.makeText(this, String.valueOf(content), duration);
+            }
+            currentToast.show();
         });
     }
 
-    private void showToast(final String message, final int duration) {
-        runOnUiThread(() -> {
-            Toast.makeText(getApplicationContext(), message, duration).show();
-        });
-    }
 
     void loadTagMemory() {
         try {
@@ -1933,68 +1997,71 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             View rv = tdl.getRoot();
             tagDialog.setContentView(rv);
             tdl.btncls.setOnClickListener(v -> tagDialog.dismiss());
+            tdl.btnread.setOnClickListener(v -> readTagMemory(tdl));
             recyclerView = tdl.recyclerView;
             LinearLayoutManager layoutManager = new LinearLayoutManager(this);
             layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
             layoutManager.scrollToPosition(0);
-            recyclerView.setLayoutManager(layoutManager);
-            tdl.btnread.setOnClickListener(v -> readTagMemory(tdl));
+			recyclerView.setLayoutManager(layoutManager);
+            tagItems = new tagItem[0];
+            recycleAdapter = new tagAdapter(this, tagItems);
+            recyclerView.setAdapter(recycleAdapter);
             tagDialog.show();
             readTagMemory(tdl);
         } catch (Exception ignored) {}
     }
 
 
- void readTagMemory(TagDialogBinding tdl)
- {
-     try {
-         if (currentTag == null) {
-             showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
-             return;
-         }
-         NfcA nfcA = NfcA.get(currentTag);
-         if (nfcA != null) {
-             if (!nfcA.isConnected()) nfcA.connect();
-             int maxPages = (tagType == 216) ? 231 : (tagType == 215) ? 135 : 45;
-             if (tagType == 100) maxPages = 48; // Ultralight C
-             tdl.lbldesc.setText(tagType == 100 ? "UL-C" : "NTAG" + tagType);
-             tagItems = new tagItem[maxPages];
-             for (int i = 0; i < maxPages; i += 4) {
-                 byte[] data = nfcA.transceive(new byte[]{0x30, (byte) i});
-                 for (int offset = 0; offset < 4; offset++) {
-                     int currentPage = i + offset;
-                     if (currentPage >= maxPages) break;
-                     byte[] pageData = new byte[4];
-                     System.arraycopy(data, offset * 4, pageData, 0, 4);
-                     String hexString = bytesToHex(pageData, true);
-                     String definition = getPageDefinition(currentPage, tagType);
-                     tagItems[currentPage] = new tagItem();
-                     tagItems[currentPage].tKey  = String.format(Locale.getDefault(), "Page %d | %s", currentPage, definition);
-                     tagItems[currentPage].tValue = hexString;
-                     if (currentPage < 2) {
-                         tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.locked);
-                     } else if(definition.contains("User Data")) {
-                         tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.writable);
-                     } else {
-                         tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.internal);
-                     }
-                 }
-             }
-
-             recycleAdapter = new tagAdapter(getBaseContext(), tagItems);
-             recycleAdapter.setHasStableIds(true);
-             runOnUiThread(() -> {
-                 recyclerView.removeAllViewsInLayout();
-                 recyclerView.setAdapter(null);
-                 recyclerView.setAdapter(recycleAdapter);
-             });
-         }
-         else {
-             showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
-         }
-     } catch (Exception ignored) {
-         showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
-     }
- }
-
+    void readTagMemory(TagDialogBinding tdl) {
+        if (currentTag == null) {
+            showToast(R.string.no_nfc_tag_found, Toast.LENGTH_SHORT);
+            return;
+        }
+        executorService.execute(() -> {
+            NfcA nfcA = NfcA.get(currentTag);
+            if (nfcA != null) {
+                try {
+                    int maxPages = (tagType == 216) ? 231 : (tagType == 215) ? 135 : 45;
+                    if (tagType == 100) maxPages = 48;
+                    mainHandler.post(() -> tdl.lbldesc.setText(tagType == 100 ? "UL-C" : "NTAG" + tagType));
+                    tagItems = new tagItem[maxPages];
+                    for (int i = 0; i < maxPages; i += 4) {
+                        byte[] data = transceive(nfcA, new byte[]{0x30, (byte) i});
+                        for (int offset = 0; offset < 4; offset++) {
+                            int currentPage = i + offset;
+                            if (currentPage >= maxPages) break;
+                            byte[] pageData = new byte[4];
+                            System.arraycopy(data, offset * 4, pageData, 0, 4);
+                            String hexString = bytesToHex(pageData, true);
+                            String definition = getPageDefinition(currentPage, tagType);
+                            tagItems[currentPage] = new tagItem();
+                            tagItems[currentPage].tKey = String.format(Locale.getDefault(), "Page %d | %s", currentPage, definition);
+                            tagItems[currentPage].tValue = hexString;
+                            if (currentPage < 2) {
+                                tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.locked);
+                            } else if (definition.contains("User Data")) {
+                                tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.writable);
+                            } else {
+                                tagItems[currentPage].tImage = AppCompatResources.getDrawable(this, R.drawable.internal);
+                            }
+                        }
+                    }
+                    mainHandler.post(() -> {
+                        recycleAdapter = new tagAdapter(this, tagItems);
+                        recycleAdapter.setHasStableIds(true);
+                        recyclerView.setAdapter(recycleAdapter);
+                    });
+                } catch (Exception ignored) {
+                    showToast(R.string.error_reading_tag, Toast.LENGTH_SHORT);
+                } finally {
+                    try {
+                        if (nfcA.isConnected()) nfcA.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+            } else {
+                showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
+            }
+        });
+    }
 }

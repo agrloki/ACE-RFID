@@ -1,6 +1,5 @@
 package dngsoftware.acerfid;
 
-import static androidx.core.app.ActivityCompat.requestPermissions;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -13,12 +12,14 @@ import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.net.Uri;
+import android.text.InputFilter;
+import android.text.Spanned;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
-
+import androidx.annotation.ColorInt;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 @SuppressLint("GetInstance")
@@ -89,16 +92,40 @@ public class Utils {
             filament.position = db.getItemCount();
             filament.filamentID = "";
             filament.filamentName = "ASA";
-            filament.filamentVendor = "";
+            filament.filamentVendor = "AC";
             filament.filamentParam = "240|280|90|100";
             db.addItem(filament);
 
             filament = new Filament();
             filament.position = db.getItemCount();
             filament.filamentID = "";
+            filament.filamentName = "PC";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "260|300|100|110";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "";
+            filament.filamentName = "PEBA";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "225|255|45|90";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "";
             filament.filamentName = "PETG";
-            filament.filamentVendor = "";
+            filament.filamentVendor = "AC";
             filament.filamentParam = "230|250|70|90";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "";
+            filament.filamentName = "PETG-CF";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "240|270|65|75";
             db.addItem(filament);
 
             filament = new Filament();
@@ -111,17 +138,17 @@ public class Utils {
 
             filament = new Filament();
             filament.position = db.getItemCount();
-            filament.filamentID = "AHPLPBK-102";
-            filament.filamentName = "PLA+";
+            filament.filamentID = "";
+            filament.filamentName = "PLA Galaxy";
             filament.filamentVendor = "AC";
-            filament.filamentParam = "205|215|50|60";
+            filament.filamentParam = "190|230|50|60";
             db.addItem(filament);
 
             filament = new Filament();
             filament.position = db.getItemCount();
             filament.filamentID = "";
             filament.filamentName = "PLA Glow";
-            filament.filamentVendor = "";
+            filament.filamentVendor = "AC";
             filament.filamentParam = "190|230|50|60";
             db.addItem(filament);
 
@@ -137,7 +164,7 @@ public class Utils {
             filament.position = db.getItemCount();
             filament.filamentID = "";
             filament.filamentName = "PLA Marble";
-            filament.filamentVendor = "";
+            filament.filamentVendor = "AC";
             filament.filamentParam = "200|230|50|60";
             db.addItem(filament);
 
@@ -152,8 +179,16 @@ public class Utils {
             filament = new Filament();
             filament.position = db.getItemCount();
             filament.filamentID = "";
+            filament.filamentName = "PLA Metal";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "190|230|35|60";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "";
             filament.filamentName = "PLA SE";
-            filament.filamentVendor = "";
+            filament.filamentVendor = "AC";
             filament.filamentParam = "190|230|55|65";
             db.addItem(filament);
 
@@ -163,6 +198,22 @@ public class Utils {
             filament.filamentName = "PLA Silk";
             filament.filamentVendor = "AC";
             filament.filamentParam = "200|230|55|65";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "AHPLPBK-102";
+            filament.filamentName = "PLA+";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "205|215|50|60";
+            db.addItem(filament);
+
+            filament = new Filament();
+            filament.position = db.getItemCount();
+            filament.filamentID = "";
+            filament.filamentName = "PLA-CF";
+            filament.filamentVendor = "AC";
+            filament.filamentParam = "210|240|45|65";
             db.addItem(filament);
 
             filament = new Filament();
@@ -251,19 +302,50 @@ public class Utils {
     }
 
     public static void playBeep() {
-        new Thread(() -> {
-            try {
-                ToneGenerator toneGenerator = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50);
-                toneGenerator.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 300);
-                toneGenerator.stopTone();
-                toneGenerator.release();
-            } catch (Exception ignored) {
+        try {
+            ToneGenerator toneGenerator = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50);
+            toneGenerator.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 300);
+            toneGenerator.stopTone();
+            Thread.sleep(300);
+            toneGenerator.release();
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static class HexInputFilter implements InputFilter {
+        @Override
+        public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
+            StringBuilder filtered = new StringBuilder();
+            for (int i = start; i < end; i++) {
+                char character = source.charAt(i);
+                if (Character.isDigit(character) || (character >= 'a' && character <= 'f') || (character >= 'A' && character <= 'F')) {
+                    filtered.append(character);
+                }
             }
-        }).start();
+            return filtered.toString();
+        }
+    }
+
+    public static boolean isValidHexCode(String hexCode) {
+        Pattern pattern = Pattern.compile("^[0-9a-fA-F]{8}$");
+        Matcher matcher = pattern.matcher(hexCode);
+        return matcher.matches();
+    }
+
+    public static String rgbToHexA(int r, int g, int b, int a) {
+        return String.format("%02X%02X%02X%02X", a, r, g, b);
     }
 
     public static byte[] numToBytes(int value) {
         return revArray(new byte[]{(byte) (value >> 8), (byte) value});
+    }
+
+    public static int getContrastColor(@ColorInt int backgroundColor) {
+        int red = Color.red(backgroundColor);
+        int green = Color.green(backgroundColor);
+        int blue = Color.blue(backgroundColor);
+        double luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0;
+        return (luminance > 0.5) ? Color.BLACK : Color.WHITE;
     }
 
     public static int parseNumber(byte[] byteArray) {
@@ -454,6 +536,15 @@ public class Utils {
         editor.apply();
     }
 
+    public static void setThemeMode(boolean enabled)
+    {
+        if (enabled) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        }else{
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+        }
+    }
+
     public static void setVendorByItem(Spinner spinner, ArrayAdapter<String> adapter, String itemName) {
         for (int i = 0; i < adapter.getCount(); i++) {
             if (itemName.startsWith(Objects.requireNonNull(adapter.getItem(i)))) {
@@ -614,13 +705,27 @@ public class Utils {
             "PA",
             "PA-CF",
             "PC",
-            "PETG",
             "PLA",
-            "PLA+",
             "PLA-CF",
             "PVA",
             "PP",
-            "TPU"
+            "TPU",
+            "PETG",
+            "BVOH",
+            "PET-CF",
+            "PETG-CF",
+            "PA6-CF",
+            "PAHT-CF",
+            "PPS",
+            "PPS-CF",
+            "PET",
+            "ASA-CF",
+            "PA-GF",
+            "PETG-GF",
+            "PP-CF",
+            "PCTG",
+            "PEBA",
+            "PBT"
     };
 
     public static int[] GetDefaultTemps(String materialType) {
@@ -651,6 +756,12 @@ public class Utils {
                 return new int[]{225, 245, 80, 105};
             case "TPU":
                 return new int[]{210, 230, 25, 60};
+            case "PEBA":
+                return new int[]{225, 255, 45, 90};
+            case "PETG-CF":
+                return new int[]{240, 270, 65, 75};
+            case "PBT":
+                return new int[]{230, 250, 60, 70};
         }
         return new int[]{185, 300, 45, 110};
     }

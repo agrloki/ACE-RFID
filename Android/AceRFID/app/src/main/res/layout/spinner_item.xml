@@ -6,9 +6,8 @@
     android:layout_centerInParent="true"
     android:textSize="18sp"
     android:paddingStart="10dp"
+	android:singleLine="true"
     android:paddingEnd="1dp"
-    android:singleLine="true"
     android:gravity="start|center"
     android:background="@drawable/divider"
-    android:textColor="@color/text_color"
-    />
+    android:textColor="@color/text_main" />

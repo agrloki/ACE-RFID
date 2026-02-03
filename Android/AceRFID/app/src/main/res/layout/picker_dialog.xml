@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
     android:fillViewport="true"
-    android:background="#F4F4F4">
+    android:background="@color/background_main">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -45,11 +45,12 @@
                 android:paddingBottom="8dp">
 
                 <TextView
+                    android:id="@+id/rgbSlidersHeaderTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/rgb_sliders"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="18sp"
                     android:textStyle="normal" />
 
@@ -57,6 +58,7 @@
                     android:id="@+id/rgbSlidersToggleIcon"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_arrow_up" />
             </LinearLayout>
 
@@ -72,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="@string/red"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="16sp" />
 
                 <SeekBar
@@ -92,7 +94,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="@string/green"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="16sp" />
 
                 <SeekBar
@@ -112,7 +114,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="@string/blue"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="16sp" />
 
                 <SeekBar
@@ -128,11 +130,12 @@
                     android:thumbTint="#3B82F6" />
 
                 <TextView
+                    android:id="@+id/alphaSliderTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="@string/alpha"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="16sp" />
 
                 <SeekBar
@@ -180,7 +183,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/color_picker"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="18sp"
                     android:textStyle="normal" />
 
@@ -188,6 +191,7 @@
                     android:id="@+id/gradientPickerToggleIcon"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_arrow_up" />
             </LinearLayout>
 
@@ -238,7 +242,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/preset_colors"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="18sp"
                     android:textStyle="normal" />
 
@@ -246,6 +250,7 @@
                     android:id="@+id/presetColorsToggleIcon"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_arrow_up" />
             </LinearLayout>
 
@@ -307,7 +312,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/photo_color"
-                    android:textColor="#374151"
+                    android:textColor="@color/text_main"
                     android:textSize="18sp"
                     android:textStyle="normal" />
 
@@ -405,6 +410,7 @@
                     android:layout_weight="1" />
 
                 <Button
+                    android:textColor="@color/text_inverted"
                     android:id="@+id/btncls"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

@@ -1,364 +1,352 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F4F4F4"
-    android:fitsSystemWindows="true"
+    android:background="@color/background_main"
     android:fillViewport="true"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent">
+    android:fitsSystemWindows="true">
 
-<androidx.constraintlayout.widget.ConstraintLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="#F4F4F4"
-    android:maxWidth="500dp"
-    android:layout_gravity="center|fill_vertical"
-    android:layout_marginStart="0dp"
-    android:layout_marginTop="0dp"
-    android:layout_marginEnd="0dp"
-    android:layout_marginBottom="0dp"
-    android:orientation="vertical">
-
-    <Button
-        android:id="@+id/btncls"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="14dp"
-        android:text="@string/close"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toStartOf="@+id/btnsave"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/btnsave" />
+        android:layout_gravity="center|fill_vertical"
+        android:background="@color/background_main"
+        android:maxWidth="500dp">
 
-    <Button
-        android:id="@+id/btnsave"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="42dp"
-        android:padding="14dp"
-        android:text="@string/add"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/btncls"
-        app:layout_constraintTop_toBottomOf="@+id/txtbedmax" />
+        <TextView
+            android:id="@+id/lbltitle"
+            android:layout_width="0dp"
+            android:layout_height="33dp"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="@color/primary_brand"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <EditText
-        android:id="@+id/txtvendor"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:visibility="invisible"
-        android:layout_marginTop="96dp"
-        android:autofillHints=""
-        android:background="@drawable/edittext"
-        android:digits="@string/alphanumeric"
-        android:ems="10"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:imeOptions="actionDone"
-        android:inputType="textNoSuggestions"
-        android:maxLength="10"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toEndOf="@+id/lblvendor"
-        app:layout_constraintTop_toTopOf="parent"/>
+        <ImageView
+            android:id="@+id/btnhlp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="@string/help"
+            app:layout_constraintBottom_toTopOf="@id/vendor"
+            app:layout_constraintEnd_toEndOf="@id/vendor"
+            app:srcCompat="@drawable/twotone_help_24"
+            app:tint="@color/primary_brand" />
 
-    <Spinner
-        android:id="@+id/vendor"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="96dp"
-        android:spinnerMode="dialog"
-        app:backgroundTint="@color/text_color"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toEndOf="@+id/lblvendor"
-        app:layout_constraintTop_toTopOf="parent" />
+        <Spinner
+            android:id="@+id/vendor"
+            android:layout_width="280dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="96dp"
+            android:spinnerMode="dialog"
+            app:backgroundTint="@color/text_main"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <View
-        android:id="@+id/vendorborder"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:background="@drawable/border"
-        app:layout_constraintEnd_toEndOf="@+id/vendor"
-        app:layout_constraintTop_toTopOf="@+id/vendor"
-        app:layout_constraintStart_toStartOf="@+id/vendor"
-        app:layout_constraintBottom_toBottomOf="@+id/vendor" />
+        <View
+            android:id="@+id/vendorborder"
+            android:layout_width="280dp"
+            android:layout_height="56dp"
+            android:background="@drawable/border"
+            app:layout_constraintBottom_toBottomOf="@+id/vendor"
+            app:layout_constraintEnd_toEndOf="@+id/vendor"
+            app:layout_constraintStart_toStartOf="@+id/vendor"
+            app:layout_constraintTop_toTopOf="@+id/vendor" />
 
-    <Spinner
-        android:id="@+id/type"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="50dp"
-        android:spinnerMode="dialog"
-        app:backgroundTint="@color/text_color"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toEndOf="@+id/lbltype"
-        app:layout_constraintTop_toBottomOf="@+id/vendor" />
+        <TextView
+            android:id="@+id/lblvendor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/hint_background"
+            android:includeFontPadding="false"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="@string/vendor"
+            android:textColor="@color/primary_brand"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toTopOf="@+id/vendorborder"
+            app:layout_constraintStart_toStartOf="@+id/vendorborder"
+            app:layout_constraintTop_toTopOf="@+id/vendorborder" />
 
-    <View
-        android:id="@+id/typeborder"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:background="@drawable/border"
-        app:layout_constraintEnd_toEndOf="@+id/type"
-        app:layout_constraintTop_toTopOf="@+id/type"
-        app:layout_constraintStart_toStartOf="@+id/type"
-        app:layout_constraintBottom_toBottomOf="@+id/type" />
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_vendor"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="280dp"
+            android:layout_height="58dp"
+            android:layout_marginTop="-4dp"
+            android:hint="@string/vendor"
+            app:boxBackgroundColor="@color/background_alt"
+            android:textColorHint="@color/primary_brand"
+            android:visibility="invisible"
+            app:boxStrokeColor="@color/input_border_color"
+            app:expandedHintEnabled="false"
+            app:hintAnimationEnabled="false"
+            app:layout_constraintEnd_toEndOf="@+id/vendorborder"
+            app:layout_constraintStart_toStartOf="@+id/vendorborder"
+            app:layout_constraintTop_toTopOf="@+id/vendorborder" >
 
-    <EditText
-        android:id="@+id/txtserial"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="10dp"
-        android:autofillHints=""
-        android:background="@drawable/edittext"
-        android:digits="@string/alphanumeric"
-        android:ems="10"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:imeOptions="actionDone"
-        android:inputType="textNoSuggestions"
-        android:maxLength="16"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toEndOf="@+id/lblserial"
-        app:layout_constraintTop_toBottomOf="@+id/type" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/txtvendor"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:digits="@string/alphanumeric"
+                android:inputType="textNoSuggestions"
+                android:maxLength="10"
+                android:padding="10dp"
+                android:singleLine="true"
+                android:textColor="@color/text_main" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <EditText
-        android:id="@+id/txtextmin"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginTop="40dp"
-        android:background="@drawable/edittext"
-        android:digits="@string/numeric"
-        android:ems="4"
-        android:inputType="number"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:importantForAutofill="no"
-        android:imeOptions="actionDone"
-        android:maxLength="3"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="@+id/txtserial"
-        app:layout_constraintTop_toBottomOf="@+id/txtserial" />
+        <CheckBox
+            android:id="@+id/chkvendor"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_marginTop="4dp"
+            android:text="@string/can_t_find_vendor_i_want"
+            android:textColor="@color/text_main"
+            app:layout_constraintStart_toStartOf="@+id/vendor"
+            app:layout_constraintTop_toBottomOf="@+id/layout_vendor" />
 
-    <EditText
-        android:id="@+id/txtextmax"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/edittext"
-        android:digits="@string/numeric"
-        android:ems="4"
-        android:focusable="true"
-        android:importantForAutofill="no"
-        android:focusableInTouchMode="true"
-        android:imeOptions="actionDone"
-        android:inputType="number"
-        android:maxLength="3"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="@+id/txtserial"
-        app:layout_constraintTop_toBottomOf="@+id/txtextmin" />
+        <Spinner
+            android:id="@+id/type"
+            android:layout_width="280dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="50dp"
+            android:spinnerMode="dialog"
+            app:backgroundTint="@color/text_main"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.497"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/vendor" />
 
-    <EditText
-        android:id="@+id/txtbedmin"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/edittext"
-        android:digits="@string/numeric"
-        android:ems="4"
-        android:focusable="true"
-        android:importantForAutofill="no"
-        android:focusableInTouchMode="true"
-        android:imeOptions="actionDone"
-        android:inputType="number"
-        android:maxLength="3"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="@+id/txtserial"
-        app:layout_constraintTop_toBottomOf="@+id/txtextmax" />
+        <View
+            android:id="@+id/typeborder"
+            android:layout_width="280dp"
+            android:layout_height="56dp"
+            android:background="@drawable/border"
+            app:layout_constraintBottom_toBottomOf="@+id/type"
+            app:layout_constraintEnd_toEndOf="@+id/type"
+            app:layout_constraintStart_toStartOf="@+id/type"
+            app:layout_constraintTop_toTopOf="@+id/type" />
 
-    <EditText
-        android:id="@+id/txtbedmax"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginTop="10dp"
-        android:importantForAutofill="no"
-        android:background="@drawable/edittext"
-        android:digits="@string/numeric"
-        android:ems="4"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:imeOptions="actionDone"
-        android:inputType="number"
-        android:maxLength="3"
-        android:padding="10dp"
-        android:singleLine="true"
-        android:text=""
-        android:textColor="@color/text_color"
-        app:layout_constraintEnd_toEndOf="@+id/txtserial"
-        app:layout_constraintTop_toBottomOf="@+id/txtbedmin" />
+        <TextView
+            android:id="@+id/lbltype_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/hint_background"
+            android:includeFontPadding="false"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="@string/type"
+            android:textColor="@color/primary_brand"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toTopOf="@+id/typeborder"
+            app:layout_constraintStart_toStartOf="@+id/typeborder"
+            app:layout_constraintTop_toTopOf="@+id/typeborder" />
 
-    <TextView
-        android:id="@+id/lblvendor"
-        android:layout_width="70dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/vendor"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/vendor"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/vendor" />
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_serial"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            app:boxBackgroundColor="@color/background_alt"
+            android:layout_marginTop="20dp"
+            android:hint="@string/serial"
+            android:textColorHint="@color/primary_brand"
+            app:boxStrokeColor="@color/input_border_color"
+            app:expandedHintEnabled="false"
+            app:hintAnimationEnabled="false"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/type">
 
-    <TextView
-        android:id="@+id/lbltype"
-        android:layout_width="70dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/type"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/type"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/type" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/txtserial"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:digits="@string/alphanumeric"
+                android:inputType="textNoSuggestions"
+                android:maxLength="16"
+                android:textColor="@color/text_main" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-    <TextView
-        android:id="@+id/lblserial"
-        android:layout_width="70dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/serial"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/txtserial"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/txtserial" />
+        <TextView
+            android:id="@+id/lblserial_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:paddingStart="4dp"
+            android:paddingEnd="1dp"
+            android:text="@string/serialdesc"
+            android:textColor="@color/primary_variant"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="@id/layout_serial"
+            app:layout_constraintStart_toStartOf="@id/layout_serial"
+            app:layout_constraintTop_toBottomOf="@id/layout_serial" />
 
-    <TextView
-        android:id="@+id/lblextmin"
-        android:layout_width="120dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="26dp"
-        android:text="@string/extruder_min"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/txtextmin"
-        app:layout_constraintTop_toTopOf="@+id/txtextmin" />
+        <LinearLayout
+            android:id="@+id/row_ext"
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/lblserial_desc">
 
-    <TextView
-        android:id="@+id/lblextmax"
-        android:layout_width="120dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="26dp"
-        android:text="@string/extruder_max"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/txtextmax"
-        app:layout_constraintTop_toTopOf="@+id/txtextmax" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_extmin"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:boxBackgroundColor="@color/background_alt"
+                android:textColorHint="@color/primary_brand"
+                app:boxStrokeColor="@color/input_border_color"
+                android:hint="@string/extruder_min"
+                app:expandedHintEnabled="false"
+                app:hintAnimationEnabled="false">
 
-    <TextView
-        android:id="@+id/lblbedmin"
-        android:layout_width="120dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="26dp"
-        android:text="@string/bed_min"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/txtbedmin"
-        app:layout_constraintTop_toTopOf="@+id/txtbedmin" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/txtextmin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:digits="@string/numeric"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:textColor="@color/text_main" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-    <TextView
-        android:id="@+id/lblbedmax"
-        android:layout_width="120dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="26dp"
-        android:text="@string/bed_max"
-        android:textColor="@color/text_color"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/txtbedmax"
-        app:layout_constraintTop_toTopOf="@+id/txtbedmax" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_extmax"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                app:boxBackgroundColor="@color/background_alt"
+                android:textColorHint="@color/primary_brand"
+                app:boxStrokeColor="@color/input_border_color"
+                android:hint="@string/extruder_max"
+                app:expandedHintEnabled="false"
+                app:hintAnimationEnabled="false">
 
-    <TextView
-        android:id="@+id/lbltitle"
-        android:layout_width="0dp"
-        android:layout_height="33dp"
-        android:layout_marginTop="16dp"
-        android:gravity="center"
-        android:text=""
-        android:textColor="#1976D2"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/txtextmax"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:digits="@string/numeric"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:textColor="@color/text_main" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
 
-    <TextView
-        android:layout_width="0dp"
-        android:layout_height="19dp"
-        android:paddingStart="4dp"
-        android:paddingEnd="0dp"
-        android:textColor="#82B1FF"
-        android:textSize="14sp"
-        android:text="@string/serialdesc"
-        app:layout_constraintStart_toStartOf="@id/txtserial"
-        app:layout_constraintEnd_toEndOf="@id/txtserial"
-        app:layout_constraintTop_toBottomOf="@id/txtserial" />
+        <LinearLayout
+            android:id="@+id/row_bed"
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/row_ext">
 
-    <ImageView
-        android:id="@+id/btnhlp"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:layout_marginBottom="16dp"
-        android:contentDescription="@string/help"
-        app:srcCompat="@drawable/twotone_help_24"
-        app:tint="#1976D2"
-        app:layout_constraintEnd_toEndOf="@id/vendor"
-        app:layout_constraintBottom_toTopOf="@id/vendor" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_bedmin"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:boxBackgroundColor="@color/background_alt"
+                android:textColorHint="@color/primary_brand"
+                app:boxStrokeColor="@color/input_border_color"
+                android:hint="@string/bed_min"
+                app:expandedHintEnabled="false"
+                app:hintAnimationEnabled="false">
 
-    <CheckBox
-        android:id="@+id/chkvendor"
-        android:layout_width="wrap_content"
-        android:layout_height="30dp"
-        android:layout_marginTop="4dp"
-        android:textColor="@color/text_color"
-        android:text="@string/can_t_find_vendor_i_want"
-        app:layout_constraintStart_toStartOf="@+id/vendor"
-        app:layout_constraintTop_toBottomOf="@+id/txtvendor" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/txtbedmin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:digits="@string/numeric"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:textColor="@color/text_main" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
-    </ScrollView>
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_bedmax"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                app:boxBackgroundColor="@color/background_alt"
+                android:textColorHint="@color/primary_brand"
+                app:boxStrokeColor="@color/input_border_color"
+                android:hint="@string/bed_max"
+                app:expandedHintEnabled="false"
+                app:hintAnimationEnabled="false">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/txtbedmax"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:digits="@string/numeric"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:textColor="@color/text_main" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/button_container"
+            style="?android:attr/buttonBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toBottomOf="@+id/row_bed"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <Button
+                android:textColor="@color/text_inverted"
+                android:id="@+id/btncls"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:layout_marginEnd="40dp"
+                android:text="@string/cancel"
+                android:textSize="16sp"
+                tools:ignore="ButtonStyle" />
+
+            <Button
+                android:textColor="@color/text_inverted"
+                android:id="@+id/btnsave"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="40dp"
+                android:padding="14dp"
+                android:text="@string/add"
+                android:textSize="16sp"
+                tools:ignore="ButtonStyle" />
+
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
