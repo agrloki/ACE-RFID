@@ -200,17 +200,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             }
         });
 
-
-        try {
-            nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-            if (nfcAdapter != null && nfcAdapter.isEnabled()) {
-                Bundle options = new Bundle();
-                options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
-                nfcAdapter.enableReaderMode(this, this, NfcAdapter.FLAG_READER_NFC_A, options);
-            }
-        } catch (Exception ignored) {
-        }
-
         setMatDb();
 
         main.colorspin.setOnTouchListener((v, event) -> {
@@ -227,7 +216,31 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             return false;
         });
 
-        ReadTagUID(getIntent());
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        try {
+            nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+            if (nfcAdapter != null && nfcAdapter.isEnabled()) {
+                Bundle options = new Bundle();
+                options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
+                nfcAdapter.enableReaderMode(this, this, NfcAdapter.FLAG_READER_NFC_A, options);
+            }
+        }catch (Exception ignored) {}
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            if (nfcAdapter != null) {
+                nfcAdapter.disableReaderMode(this);
+            }
+        } catch (Exception ignored) {}
     }
 
 
@@ -365,44 +378,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         }
         else {
             main.material.setSelection(6);
-        }
-    }
-
-
-    void ReadTagUID(Intent intent) {
-        if (intent != null) {
-            try {
-                if (NfcAdapter.ACTION_TECH_DISCOVERED.equals(intent.getAction()) || NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {
-                    currentTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-                    assert currentTag != null;
-                    byte[] uid = currentTag.getId();
-                    if (uid.length >= 6) {
-                        tagType = getTagType(NfcA.get(currentTag));
-                        showToast(getString(R.string.tag_found) + bytesToHex(uid, false), Toast.LENGTH_SHORT);
-                        main.tagid.setText(bytesToHex(uid, true));
-                        if (tagType == 100) {
-                            main.tagtype.setText(R.string.ultralight_c);
-                        }
-                        else {
-                            main.tagtype.setText(String.format(Locale.getDefault(), "   NTAG%d", tagType));
-                        }
-                        main.lbltagid.setVisibility(View.VISIBLE);
-                        main.lbltagtype.setVisibility(View.VISIBLE);
-                        if (GetSetting(this, "autoread", false)) {
-                            readTag(currentTag);
-                        }
-                    }
-                    else {
-                        currentTag = null;
-                        main.tagid.setText("");
-                        main.tagtype.setText("");
-                        main.lbltagid.setVisibility(View.INVISIBLE);
-                        main.lbltagtype.setVisibility(View.INVISIBLE);
-                        showToast(R.string.invalid_tag_type, Toast.LENGTH_SHORT);
-                    }
-                }
-            } catch (Exception ignored) {
-            }
         }
     }
 
@@ -2002,7 +1977,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             LinearLayoutManager layoutManager = new LinearLayoutManager(this);
             layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
             layoutManager.scrollToPosition(0);
-			recyclerView.setLayoutManager(layoutManager);
+            recyclerView.setLayoutManager(layoutManager);
             tagItems = new tagItem[0];
             recycleAdapter = new tagAdapter(this, tagItems);
             recyclerView.setAdapter(recycleAdapter);
